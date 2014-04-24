@@ -29,6 +29,6 @@ module.exports = function(app) {
 				res.json({ 'test': 'testing' });
 			
 	});
-	app.get('/api/maptest', index.index);
+
 
 };
