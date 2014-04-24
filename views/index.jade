@@ -1,14 +1,22 @@
-extends layout
-
-block content
-  h1= title
-  p Welcome to This page
-  div
-    table
-      thead
-        tr 
-          th Course ID
-          th Course Name
-      tbody
-       
-
+!!! 5
+html(lang='en')
+head
+    meta(charset='utf-8')
+    title SVG USA Map
+    meta(name='description', content='SVG/VML Interactive USA map')
+    meta(name='Grant + Alex', content='LGLab')
+    link(href='/public/css/reset.css', rel='stylesheet', type='text/css')
+    link(href='/public/css/fonts.css', rel='stylesheet', type='text/css')
+    link(href='/public/css/style.css', rel='stylesheet', type='text/css')
+    link(href='/public/css/map.css', rel='stylesheet', type='text/css')
+    script(src='/A2EB891D63C8/avg_ls_dom.js', type='text/javascript')
+    script(src='/public/javascriptsjquery.js', type='text/javascript')
+    script(src='/public/javascriptsraphael.min.js', type='text/javascript')
+    script(src='/public/javascriptsscale.raphael.js', type='text/javascript')
+    script(src='/public/javascriptspaths.js', type='text/javascript')
+    script(src='/public/javascriptsinit.js', type='text/javascript')
+  body
+    #container
+      .mapWrapper
+        #map
+        #text
