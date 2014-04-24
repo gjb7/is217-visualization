@@ -1,54 +1,124 @@
 var path = require('path'),
+	fs = require('fs'),
 	csv = require('csv'),
 	mongo = require('mongodb'),
 	MongoClient = mongo.MongoClient;
 
+var csvFiles = [
+//	path.join(__dirname, 'data', 'words', 'obamaromneyWords.csv'),
+	path.join(__dirname, 'data', 'words', 'romneyWords.csv'),
+	path.join(__dirname, 'data', 'words', 'obamaWords.csv')
+];
 
+var tweetDirs = [
+	path.join(__dirname, 'data', 'tweets', 'from_obama'),
+	path.join(__dirname, 'data', 'tweets', 'from_romney'),
+	path.join(__dirname, 'data', 'tweets', 'obama'),
+	path.join(__dirname, 'data', 'tweets', 'romney'),
+];
 
-var DATA_TYPES = ['ANS', 'AFR', 'ALR', 'CDEPC', 'CGERIE', 'EOE', 'EOHP', 'GII', 'GIIV'];
-var YEARS = ['1980', '1990', '2000', '2005', '2006', '2007', '2008', '2009', '2010'];
+function csvArrayToObject(row, headers) {
+	var object = {};
+	
+	for (var i = 0; i < headers.length; i++) {
+		object[headers[i]] = row[i];
+	}
+	
+	return object;
+}
 
 MongoClient.connect('mongodb://localhost/is217-visualization', function(err, db) {
-	
-	
 	if (err) {
 		console.log(err);
 		
 		return;
 	}
 	
-	var collection = db.collection('data');
+	var wordCollection = db.collection('words');
 	
-	csv()
-		.from.path(path.join(__dirname, 'data', 'Data1.csv'))
+	csvFiles.forEach(function(filePath) {
+		var fileName = path.basename(filePath, path.extname(filePath));
+		var headers = null;
+		
+		csv()
+		.from.path(filePath, { 'header': true })
 		.on('record', function(row, index) {
-			if (index < 3) {
-				// One of MANY column rows. Skip the ones we don't care about.
+			if (!headers) {
+				headers = row;
+				
 				return;
 			}
 			
-			var columnIndex = 0;
+			var object = csvArrayToObject(row, headers);
 			
-			var data = {
-				"country": row[columnIndex++],
-			};
+			var word = object.words;
 			
-			DATA_TYPES.forEach(function(type) {
-				data[type] = {};
+			object.owner = fileName;
+			
+			wordCollection.insert(object, function(err, item) {
+				if (err) {
+					console.log(err);
+				}
+			});
+		})
+		.on('end', function() {
+			console.log('Done with ' + fileName);
+		});
+	});
+	
+	var tweetCollection = db.collection('tweets');
+	
+	tweetDirs.forEach(function(filePath) {
+		fs.readdir(filePath, function(err, items) {
+			items.forEach(function(item) {
+				if (path.extname(item) != '.json') {
+					return;
+				}
 				
-				YEARS.forEach(function(year) {
-					data[type][year] = row[columnIndex++];
+				var contents = fs.readFileSync(path.join(filePath, item));
+				
+				try {
+					var tweets = JSON.parse(contents).results;
+				}
+				catch (e) {
+					return;
+				}
+				
+				if (!tweets) {
+					return;
+				}
+				
+				var tweetCount = tweets.length;
+				
+				function decrementTweetCount() {
+					tweetCount--;
+					
+					if (tweetCount == 0) {
+						console.log('Done with ' + path.join(filePath, item));
+					}
+				}
+				
+				tweets.forEach(function(tweet) {
+					tweetCollection.findOne({ 'id_str': tweet.id_str }, function(err, item) {
+						if (err) {
+							decrementTweetCount();
+							
+							return;
+						}
+						
+						if (item) {
+							decrementTweetCount();
+							
+							return;
+						}
+						
+						tweetCollection.insert(tweet, function() {
+							decrementTweetCount();
+						});
+					});
 				});
 			});
-			
-			collection.insert(data, function(err, doc) {
-				if (err) {
-					console.log("error inserting '" + data.country + "': " + err);
-				}
-				else {
-					console.log('inserted ' + data.country);
-				}
-			});
 		});
+	});
 });
 	
