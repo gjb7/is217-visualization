@@ -20,9 +20,13 @@ MongoClient.connect('mongodb://localhost/is217-visualization', function(err, db)
 	app.use(morgan('short'));
 	app.use(express.static(path.join(__dirname, 'public')));
 	app.use(bodyParser());
+	app.set('views', __dirname + '/views')
+	app.set('view engine', 'jade')
 	
 	require('./app/api')(app);
 	
 	app.listen(app.get('port'));
 	console.log('Started server on port ' + app.get('port') + '.');
+	
+	
 });
