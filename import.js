@@ -35,89 +35,104 @@ MongoClient.connect('mongodb://localhost/is217-visualization', function(err, db)
 	}
 	
 	var wordCollection = db.collection('words');
-	
-	csvFiles.forEach(function(filePath) {
-		var fileName = path.basename(filePath, path.extname(filePath));
-		var headers = null;
+	wordCollection.remove(function(err) {
+		if (err) {
+			console.log(err);
+			
+			return;
+		}
 		
-		csv()
-		.from.path(filePath, { 'header': true })
-		.on('record', function(row, index) {
-			if (!headers) {
-				headers = row;
+		csvFiles.forEach(function(filePath) {
+			var fileName = path.basename(filePath, path.extname(filePath));
+			var headers = null;
+			
+			csv()
+			.from.path(filePath, { 'header': true })
+			.on('record', function(row, index) {
+				if (!headers) {
+					headers = row;
+					
+					return;
+				}
+				
+				var object = csvArrayToObject(row, headers);
+				
+				var word = object.words;
+				
+				object.owner = fileName;
+				
+				wordCollection.insert(object, function(err, item) {
+					if (err) {
+						console.log(err);
+					}
+				});
+			})
+			.on('end', function() {
+				console.log('Done with ' + fileName);
+			});
+		});
+		
+		var tweetCollection = db.collection('tweets');
+		tweetCollection.remove(function(err) {
+			if (err) {
+				console.log(err);
 				
 				return;
 			}
 			
-			var object = csvArrayToObject(row, headers);
-			
-			var word = object.words;
-			
-			object.owner = fileName;
-			
-			wordCollection.insert(object, function(err, item) {
-				if (err) {
-					console.log(err);
-				}
-			});
-		})
-		.on('end', function() {
-			console.log('Done with ' + fileName);
-		});
-	});
-	
-	var tweetCollection = db.collection('tweets');
-	
-	tweetDirs.forEach(function(filePath) {
-		fs.readdir(filePath, function(err, items) {
-			items.forEach(function(item) {
-				if (path.extname(item) != '.json') {
-					return;
-				}
-				
-				var contents = fs.readFileSync(path.join(filePath, item));
-				
-				try {
-					var tweets = JSON.parse(contents).results;
-				}
-				catch (e) {
-					return;
-				}
-				
-				if (!tweets) {
-					return;
-				}
-				
-				var tweetCount = tweets.length;
-				
-				function decrementTweetCount() {
-					tweetCount--;
-					
-					if (tweetCount == 0) {
-						console.log('Done with ' + path.join(filePath, item));
-					}
-				}
-				
-				tweets.forEach(function(tweet) {
-					tweetCollection.findOne({ 'id_str': tweet.id_str }, function(err, item) {
-						if (err) {
-							decrementTweetCount();
-							
+			tweetDirs.forEach(function(filePath) {
+				fs.readdir(filePath, function(err, items) {
+					items.forEach(function(item) {
+						if (path.extname(item) != '.json') {
 							return;
 						}
 						
-						if (item) {
-							decrementTweetCount();
-							
+						var contents = fs.readFileSync(path.join(filePath, item));
+						
+						try {
+							var tweets = JSON.parse(contents).results;
+						}
+						catch (e) {
 							return;
 						}
 						
-						tweetCollection.insert(tweet, function() {
-							decrementTweetCount();
+						if (!tweets) {
+							return;
+						}
+						
+						var tweetCount = tweets.length;
+						
+						function decrementTweetCount() {
+							tweetCount--;
+							
+							if (tweetCount == 0) {
+								console.log('Done with ' + path.join(filePath, item));
+							}
+						}
+						
+						tweets.forEach(function(tweet) {
+							tweetCollection.findOne({ 'id_str': tweet.id_str }, function(err, item) {
+								if (err) {
+									decrementTweetCount();
+									
+									return;
+								}
+								
+								if (item) {
+									decrementTweetCount();
+									
+									return;
+								}
+								
+								tweetCollection.insert(tweet, function() {
+									decrementTweetCount();
+								});
+							});
 						});
 					});
 				});
 			});
+
 		});
 	});
 });
