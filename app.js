@@ -25,6 +25,10 @@ MongoClient.connect('mongodb://localhost/is217-visualization', function(err, db)
 	
 	require('./app/api')(app);
 	
+	app.get('/', function(req, res) {
+		res.render("index");
+	});
+	
 	app.listen(app.get('port'));
 	console.log('Started server on port ' + app.get('port') + '.');
 	

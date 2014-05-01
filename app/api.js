@@ -24,10 +24,4 @@ module.exports = function(app) {
 			}
 		});
 	});
-	app.get('/api/map', function(req, res) {
-		
-				res.render("../views/index");
-	});
-
-
 };
