@@ -24,4 +24,22 @@ module.exports = function(app) {
 			}
 		});
 	});
+	
+	app.get('/api/words/weights', function(req, res) {
+		wordsCollection.find().toArray(function(err, words) {
+			if (err) {
+				res.json(500, { 'error': err });
+			}
+			else {
+				var weights = words.map(function(val) {
+					return [
+						val.words,
+						val['average occurrences']
+					];
+				});
+				
+				res.json(weights);
+			}
+		});
+	});
 };
